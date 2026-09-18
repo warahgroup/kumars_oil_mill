@@ -1,0 +1,21 @@
+import type { InputHTMLAttributes } from 'react'
+
+type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+  label: string
+  error?: string
+}
+
+export function Input({ label, error, className = '', id, ...props }: InputProps) {
+  const inputId = id ?? props.name
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-semibold text-brand-800">{label}</span>
+      <input
+        id={inputId}
+        className={`min-h-12 w-full rounded-xl border-2 border-brand-100 bg-white px-3 text-base text-brand-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 ${error ? 'border-red-300' : ''} ${className}`}
+        {...props}
+      />
+      {error ? <span className="mt-1 block text-xs font-medium text-red-600">{error}</span> : null}
+    </label>
+  )
+}

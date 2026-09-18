@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #d9e6ff;
+  --color-brand-200: #b8d0ff;
+  --color-brand-500: #1e4a8a;
+  --color-brand-600: #163d75;
+  --color-brand-700: #0f2f5c;
+  --color-brand-800: #0a2447;
+  --color-brand-900: #061a33;
+  --color-accent-300: #fde68a;
+  --color-accent-400: #f5c542;
+  --color-accent-500: #d4a017;
+  --color-action-sales: #15803d;
+  --color-action-production: #1d4ed8;
+  --color-action-purchase: #ca8a04;
+  --color-action-expense: #c2410c;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-brand-50 text-brand-900 font-sans antialiased;
+}
+
+.page-container {
+  @apply mx-auto w-full max-w-5xl;
+}
+
+.surface-card {
+  @apply rounded-2xl border border-brand-100 bg-white shadow-sm;
+}
+
+.touch-target {
+  @apply min-h-12;
+}
