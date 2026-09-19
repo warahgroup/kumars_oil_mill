@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 const styles = {
   sales: 'bg-action-sales text-white',
   production: 'bg-action-production text-white',
-  purchase: 'bg-action-purchase text-brand-900',
+  purchase: 'bg-action-purchase text-brand-900 shadow-md',
   expense: 'bg-action-expense text-white',
+  crushing: 'bg-action-crushing text-white',
 } as const
 
 export function QuickActionButton({

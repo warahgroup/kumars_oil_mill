@@ -87,26 +87,24 @@ export async function reportExpiry() {
 }
 
 export async function reportProfit(from?: string, to?: string) {
-  let salesQ = supabase.from('sales').select('subtotal, total_amount, total_cogs, discount, sale_date')
-  let expQ = supabase.from('expenses').select('amount, expense_date')
-  if (from) {
-    salesQ = salesQ.gte('sale_date', from)
-    expQ = expQ.gte('expense_date', from)
+  const { calculateProfitMetrics, fetchExpensesForProfitRange, fetchSalesForProfitRange } =
+    await import('@/services/businessMetricsService')
+  const { fetchCrushingForProfitRange } = await import('@/services/crushingService')
+  const f = from ?? '1970-01-01'
+  const t = to ?? '2999-12-31'
+  const [sales, expenses, crushing] = await Promise.all([
+    fetchSalesForProfitRange(f, t),
+    fetchExpensesForProfitRange(f, t),
+    fetchCrushingForProfitRange(f, t),
+  ])
+  const m = calculateProfitMetrics(sales, expenses, crushing)
+  return {
+    revenue: m.revenue,
+    cogs: m.productCost,
+    grossProfit: m.grossProfit,
+    operatingExpenses: m.businessExpenses,
+    netProfit: m.netProfit,
   }
-  if (to) {
-    salesQ = salesQ.lte('sale_date', to)
-    expQ = expQ.lte('expense_date', to)
-  }
-  const [salesRes, expRes] = await Promise.all([salesQ, expQ])
-  if (salesRes.error) throw salesRes.error
-  if (expRes.error) throw expRes.error
-
-  const revenue = (salesRes.data ?? []).reduce((s, r) => s + Number(r.subtotal), 0)
-  const cogs = (salesRes.data ?? []).reduce((s, r) => s + Number(r.total_cogs), 0)
-  const operating = (expRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0)
-  const grossProfit = revenue - cogs
-  const netProfit = grossProfit - operating
-  return { revenue, cogs, grossProfit, operatingExpenses: operating, netProfit }
 }
 
 export async function reportCashFlow() {

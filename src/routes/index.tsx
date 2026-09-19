@@ -72,6 +72,37 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: '/crushing',
+            errorElement: <RouteErrorElement title="Crushing error" />,
+            element: (
+              <Lazy>
+                <RouteBoundary title="Crushing error">
+                  <Pages.CrushingPage />
+                </RouteBoundary>
+              </Lazy>
+            ),
+          },
+          {
+            path: '/crushing/new',
+            element: (
+              <Lazy>
+                <RouteBoundary title="Crushing error">
+                  <Pages.CrushingNewPage />
+                </RouteBoundary>
+              </Lazy>
+            ),
+          },
+          {
+            path: '/crushing/:id',
+            element: (
+              <Lazy>
+                <RouteBoundary title="Crushing error">
+                  <Pages.CrushingDetailPage />
+                </RouteBoundary>
+              </Lazy>
+            ),
+          },
+          {
             path: '/bottle',
             element: (
               <Lazy>

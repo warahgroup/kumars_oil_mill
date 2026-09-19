@@ -20,6 +20,10 @@ export type BusinessValidation = {
 export async function loadSevenDayDemoData(): Promise<BusinessValidation> {
   const { data, error } = await supabase.rpc('load_seven_day_demo_data')
   if (error) throw error
+  const crush = await supabase.rpc('load_demo_crushing_samples')
+  if (crush.error && !crush.error.message.includes('does not exist')) {
+    throw crush.error
+  }
   invalidateDataCache()
   return data as BusinessValidation
 }

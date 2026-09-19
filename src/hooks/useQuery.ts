@@ -8,8 +8,8 @@ type QueryState<T> =
 export function useQuery<T>(loader: () => Promise<T>, deps: unknown[] = []) {
   const [state, setState] = useState<QueryState<T>>({ status: 'loading' })
 
-  const reload = useCallback(async () => {
-    setState({ status: 'loading' })
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setState({ status: 'loading' })
     try {
       const data = await loader()
       setState({ status: 'success', data })

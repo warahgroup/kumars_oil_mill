@@ -4,7 +4,7 @@ type Line = { label: string; value: string; emphasis?: boolean }
 
 export function CalculationPanel({ title, lines }: { title?: string; lines: Line[] }) {
   return (
-    <Card className="border-brand-200 bg-brand-50/60">
+    <Card className="border-brand-200 bg-brand-100/25">
       {title ? <p className="mb-3 text-sm font-semibold text-brand-800">{title}</p> : null}
       <dl className="space-y-2">
         {lines.map((line) => (

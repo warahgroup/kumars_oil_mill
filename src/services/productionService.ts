@@ -30,13 +30,9 @@ export async function listProductions(): Promise<ProductionListRow[]> {
 
 export async function estimateProductionCost(
   recipe: Recipe,
-  inputQty: number,
-  labour = 0,
-  electricity = 0,
-  overhead = 0,
-  wasteValue = 0,
+  inputQtyKg: number,
 ): Promise<{ oilOut: number; wasteOut: number; estimatedCost: number; costPerLitre: number }> {
-  const scale = inputQty / Number(recipe.base_raw_qty)
+  const scale = inputQtyKg / Number(recipe.base_raw_qty)
   const oilOut = Number(recipe.expected_oil_litres) * scale
   const wasteOut = Number(recipe.expected_waste_kg) * scale
   const ingredients = await listRecipeIngredients(recipe.id)
@@ -48,7 +44,7 @@ export async function estimateProductionCost(
     rawCost += await simulateFefoRawCost(ing.raw_material_id, need)
   }
 
-  const estimatedCost = rawCost + labour + electricity + overhead - wasteValue
+  const estimatedCost = rawCost
   const costPerLitre = oilOut > 0 ? estimatedCost / oilOut : 0
   return { oilOut, wasteOut, estimatedCost, costPerLitre }
 }

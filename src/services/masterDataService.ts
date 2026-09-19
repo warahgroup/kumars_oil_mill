@@ -1,3 +1,4 @@
+import { bottleDisplayName, bottleRawMaterialCode } from '@/lib/bottlePurchaseSizes'
 import { cachedQuery, invalidateDataCache } from '@/lib/dataCache'
 import { supabase } from '@/lib/supabase'
 import type {
@@ -196,6 +197,78 @@ export async function updateRawMaterial(
 ): Promise<void> {
   const { error } = await supabase.from('raw_materials').update(patch).eq('id', id)
   if (error) throw error
+  invalidateDataCache('master:materials')
+}
+
+function rawMaterialCodePrefix(category: 'raw' | 'bottle' | 'package'): string {
+  if (category === 'bottle') return 'BOT-'
+  if (category === 'package') return 'PKG-'
+  return 'RM-'
+}
+
+function uniqueMaterialCode(prefix: string, name: string): string {
+  const slug = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 14)
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase()
+  return `${prefix}${slug || 'ITEM'}-${suffix}`
+}
+
+export async function createRawMaterial(input: {
+  name: string
+  default_price: number
+  category: 'raw' | 'bottle' | 'package'
+  unit?: string
+  description?: string
+  fixedCode?: string
+}): Promise<RawMaterial> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const prefix = rawMaterialCodePrefix(input.category)
+  const unit =
+    input.unit ??
+    (input.category === 'raw' ? 'kg' : 'pcs')
+  const displayName = input.description?.trim()
+    ? `${input.name.trim()} — ${input.description.trim()}`
+    : input.name.trim()
+  if (!displayName) throw new Error('Please enter a name.')
+
+  const { data, error } = await supabase
+    .from('raw_materials')
+    .insert({
+      user_id: user.id,
+      name: displayName,
+      code: input.fixedCode ?? uniqueMaterialCode(prefix, input.name),
+      unit,
+      default_price: input.default_price,
+      shelf_life_days: input.category === 'raw' ? 180 : 3650,
+    })
+    .select('id, name, code, unit, default_price, shelf_life_days, active')
+    .single()
+  if (error) throw error
+  invalidateDataCache('master:materials')
+  return data as RawMaterial
+}
+
+export async function getOrCreateBottleRawMaterial(
+  sizeMl: number,
+  defaultPrice = 0,
+): Promise<RawMaterial> {
+  const code = bottleRawMaterialCode(sizeMl)
+  const existing = (await listRawMaterials()).find((m) => m.code.toUpperCase() === code.toUpperCase())
+  if (existing) return existing
+  return createRawMaterial({
+    name: bottleDisplayName(sizeMl),
+    default_price: defaultPrice,
+    category: 'bottle',
+    unit: 'pcs',
+    fixedCode: code,
+  })
 }
 
 export async function updateProductPackage(

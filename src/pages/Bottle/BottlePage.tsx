@@ -1,8 +1,6 @@
-import { Link } from 'react-router-dom'
 import { HistoryTable } from '@/components/common/HistoryTable'
 import { PageShell } from '@/components/common/PageShell'
 import { PageState } from '@/components/common/PageState'
-import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useQuery } from '@/hooks/useQuery'
 import { listBottling } from '@/services/bottlingService'
@@ -11,11 +9,7 @@ export default function BottlePage() {
   const { state, reload } = useQuery(() => listBottling(), [])
 
   return (
-    <PageShell
-      title="Bottle"
-      subtitle="Oil packed into bottles"
-      action={<Link to="/bottle/new"><Button size="lg">+ Bottle oil</Button></Link>}
-    >
+    <PageShell title="Bottle" subtitle="Oil packed into bottles">
       {state.status === 'loading' ? <PageState status="loading" label="Loading…" /> : null}
       {state.status === 'error' ? <PageState status="error" message={state.message} onRetry={reload} /> : null}
       {state.status === 'success' ? (

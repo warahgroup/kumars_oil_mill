@@ -1,5 +1,12 @@
+import { localIsoDate } from '@/lib/dateRangeFilter'
 import { supabase } from '@/lib/supabase'
-import { getAllAccountBalances } from '@/services/financialService'
+import {
+  calculateProfitMetrics,
+  fetchExpensesForProfitRange,
+  fetchSalesForProfitRange,
+  getMoneyAvailable,
+} from '@/services/businessMetricsService'
+import { fetchCrushingForProfitRange, listCrushing } from '@/services/crushingService'
 import { cachedQuery } from '@/lib/dataCache'
 import {
   aggregateRawMaterialTotals,
@@ -10,16 +17,18 @@ import {
 } from '@/services/stockService'
 import { listProducts, listRawMaterials, getBusinessSettings } from '@/services/masterDataService'
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export type DashboardData = {
   todaySales: number
   todayExpenses: number
   todayGrossProfit: number
   todayNetProfit: number
   todayProductionLitres: number
+  todayCrushing: {
+    customers: number
+    kgCrushed: number
+    oilReturned: number
+    crushingIncome: number
+  }
   balances: { cash: number; upi: number; bank: number }
   lowStock: ReturnType<typeof buildLowStock>
   expiryAlerts: ReturnType<typeof buildExpiryAlerts>
@@ -27,27 +36,46 @@ export type DashboardData = {
 }
 
 export async function loadDashboard(): Promise<DashboardData> {
-  const day = todayIso()
+  const day = localIsoDate()
 
   return cachedQuery(`dashboard:${day}`, async () => {
+    const crushingSafe = async () => {
+      try {
+        return await fetchCrushingForProfitRange(day, day)
+      } catch {
+        return []
+      }
+    }
+    const crushingTodaySafe = async () => {
+      try {
+        return await listCrushing(day, day)
+      } catch {
+        return []
+      }
+    }
+
     const [
-      salesRes,
-      expensesRes,
+      salesForProfit,
+      expensesForProfit,
+      crushingForProfit,
+      crushingToday,
       productionRes,
-      balances,
+      money,
       purchaseBatches,
       productionBatches,
       materials,
       products,
       settings,
     ] = await Promise.all([
-      supabase.from('sales').select('subtotal, total_amount, total_cogs').eq('sale_date', day),
-      supabase.from('expenses').select('amount').eq('expense_date', day),
+      fetchSalesForProfitRange(day, day),
+      fetchExpensesForProfitRange(day, day),
+      crushingSafe(),
+      crushingTodaySafe(),
       supabase
         .from('production_batches')
         .select('oil_output_litres')
         .eq('production_date', day),
-      getAllAccountBalances(),
+      getMoneyAvailable(),
       listPurchaseBatches({ withRemainingOnly: true }),
       listProductionBatches({ withRemainingOnly: true }),
       listRawMaterials(),
@@ -55,20 +83,26 @@ export async function loadDashboard(): Promise<DashboardData> {
       getBusinessSettings(),
     ])
 
-    if (salesRes.error) throw salesRes.error
-    if (expensesRes.error) throw expensesRes.error
     if (productionRes.error) throw productionRes.error
 
-    const todaySales = (salesRes.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0)
-    const todaySubtotal = (salesRes.data ?? []).reduce((s, r) => s + Number(r.subtotal), 0)
-    const todayCogs = (salesRes.data ?? []).reduce((s, r) => s + Number(r.total_cogs), 0)
-    const todayExpenses = (expensesRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0)
-    const todayGrossProfit = todaySubtotal - todayCogs
-    const todayNetProfit = todayGrossProfit - todayExpenses
+    const profit = calculateProfitMetrics(salesForProfit, expensesForProfit, crushingForProfit)
+    const todaySales = profit.revenue
+    const todayExpenses = profit.businessExpenses
+    const todayGrossProfit = profit.grossProfit
+    const todayNetProfit = profit.netProfit
     const todayProductionLitres = (productionRes.data ?? []).reduce(
       (s, r) => s + Number(r.oil_output_litres),
       0,
     )
+    const balances = { cash: money.cash, upi: money.upi, bank: money.bank }
+
+    const uniqueCustomers = new Set(crushingToday.map((c) => c.customer_id ?? c.id))
+    const todayCrushing = {
+      customers: uniqueCustomers.size,
+      kgCrushed: crushingToday.reduce((s, r) => s + Number(r.input_quantity), 0),
+      oilReturned: crushingToday.reduce((s, r) => s + Number(r.oil_output_quantity), 0),
+      crushingIncome: crushingForProfit.reduce((s, r) => s + Number(r.crushing_charge), 0),
+    }
 
     const rawTotals = aggregateRawMaterialTotals(purchaseBatches)
     const alertDays = (settings?.expiry_alert_days as number[] | undefined) ?? [30, 15, 7]
@@ -79,6 +113,7 @@ export async function loadDashboard(): Promise<DashboardData> {
       todayGrossProfit,
       todayNetProfit,
       todayProductionLitres,
+      todayCrushing,
       balances,
       lowStock: buildLowStock(rawTotals, materials),
       expiryAlerts: buildExpiryAlerts(

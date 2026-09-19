@@ -7,18 +7,18 @@ export type NavItem = {
 export const primaryNav: NavItem[] = [
   { to: '/home', label: 'Home' },
   { to: '/sell', label: 'Sales' },
-  { to: '/produce', label: 'Production' },
+  { to: '/crushing', label: 'Crushing' },
   { to: '/stock', label: 'Stock' },
   { to: '/more', label: 'More' },
 ]
 
 export const moreNav: NavItem[] = [
   { to: '/buy', label: 'Purchase', shortLabel: 'Buy raw material' },
-  { to: '/bottle', label: 'Bottle' },
+  { to: '/crushing', label: 'Crushing', shortLabel: 'Customer crushing service' },
   { to: '/expense', label: 'Expenses' },
   { to: '/bills', label: 'Bills' },
   { to: '/customers', label: 'Customers' },
-  { to: '/reports', label: 'Profit & Reports' },
+  { to: '/reports', label: 'Reports' },
   { to: '/settings', label: 'Settings' },
 ]
 

@@ -23,10 +23,10 @@ export function HistoryTable<T extends { id: string }>({
   const primaryCol = columns.find((c) => c.primary) ?? columns[0]
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-brand-100 bg-surface-elevated shadow-sm">
       <div className="hidden md:block">
         <table className="w-full text-left text-sm">
-          <thead className="bg-brand-50 text-brand-800">
+          <thead className="bg-brand-100 text-slate-200">
             <tr>
               {columns.map((c) => (
                 <th key={c.key} className="px-4 py-3 font-semibold">{c.header}</th>
@@ -35,7 +35,7 @@ export function HistoryTable<T extends { id: string }>({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-t border-brand-50 hover:bg-brand-50/50">
+              <tr key={row.id} className="border-t border-brand-100 hover:bg-brand-100/30">
                 {columns.map((c) => (
                   <td key={c.key} className="px-4 py-3 text-brand-900">{c.render(row)}</td>
                 ))}

@@ -34,7 +34,7 @@ export function PageShell({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-brand-900 md:text-3xl">{title}</h1>
-            {subtitle ? <p className="mt-1 text-sm text-slate-600 md:text-base">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-1 text-sm text-slate-400 md:text-base">{subtitle}</p> : null}
           </div>
           {action}
         </div>

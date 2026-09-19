@@ -28,6 +28,9 @@ import {
   updateRecipe,
 } from '@/services/masterDataService'
 import { seedDefaultBusinessData } from '@/services/onboardingService'
+import { oilLitresPerKgInput, recipeBaseRawQty, wasteKgPerKgInput } from '@/lib/recipePerKg'
+import { getCrushingSettings, updateCrushingSettings } from '@/services/crushingService'
+import type { CrushingSettings } from '@/lib/crushingConfig'
 
 const sections = [
   { id: 'business', label: 'Business' },
@@ -35,6 +38,7 @@ const sections = [
   { id: 'materials', label: 'Raw Materials' },
   { id: 'packages', label: 'Packages' },
   { id: 'recipes', label: 'Recipes' },
+  { id: 'crushing', label: 'Crushing' },
   { id: 'categories', label: 'Expense Categories' },
   { id: 'pricing', label: 'Pricing' },
   { id: 'data', label: 'Data Tools' },
@@ -56,16 +60,18 @@ export default function SettingsPage() {
   const [recipes, setRecipes] = useState<Awaited<ReturnType<typeof listRecipes>>>([])
   const [categories, setCategories] = useState<Awaited<ReturnType<typeof listExpenseCategories>>>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [crushingSettings, setCrushingSettings] = useState<CrushingSettings | null>(null)
 
   useEffect(() => {
     void (async () => {
-      const [settings, p, m, pk, r, c] = await Promise.all([
+      const [settings, p, m, pk, r, c, crush] = await Promise.all([
         getBusinessSettings(),
         listProducts(),
         listRawMaterials(),
         listProductPackages(),
         listRecipes(),
         listExpenseCategories(),
+        getCrushingSettings(),
       ])
       setBusinessName(settings?.business_name ?? '')
       setAlertDays((settings?.expiry_alert_days as number[] | undefined)?.join(',') ?? '30,15,7')
@@ -74,6 +80,7 @@ export default function SettingsPage() {
       setPackages(pk)
       setRecipes(r)
       setCategories(c)
+      setCrushingSettings(crush)
       const demo = await getDemoDataStatus()
       setDemoLoaded(demo.loaded)
       setDemoLoadedAt(demo.loadedAt)
@@ -172,16 +179,139 @@ export default function SettingsPage() {
 
       {active === 'recipes' && (
         <div className="space-y-3">
-          {recipes.map((r) => (
-            <Card key={r.id} className="grid gap-2 md:grid-cols-4">
-              <Input label="Name" value={r.name} onChange={(e) => setRecipes((prev) => prev.map((x) => x.id === r.id ? { ...x, name: e.target.value } : x))} />
-              <Input label="Expected oil (L)" type="number" value={r.expected_oil_litres} onChange={(e) => setRecipes((prev) => prev.map((x) => x.id === r.id ? { ...x, expected_oil_litres: Number(e.target.value) } : x))} />
-              <Input label="Expected waste (kg)" type="number" value={r.expected_waste_kg} onChange={(e) => setRecipes((prev) => prev.map((x) => x.id === r.id ? { ...x, expected_waste_kg: Number(e.target.value) } : x))} />
-              <Button className="self-end" onClick={() => void updateRecipe(r.id, { name: r.name, expected_oil_litres: r.expected_oil_litres, expected_waste_kg: r.expected_waste_kg })}>Save</Button>
-            </Card>
-          ))}
+          <p className="text-sm text-slate-600">Oil and waste yields are per 1 kg of base raw input (same as production).</p>
+          {recipes.map((r) => {
+            const baseName =
+              materials.find((m) => m.id === r.base_raw_material_id)?.name ?? 'base raw'
+            const baseQty = recipeBaseRawQty(r)
+            return (
+              <Card key={r.id} className="grid gap-2 md:grid-cols-4">
+                <Input
+                  label="Name"
+                  value={r.name}
+                  onChange={(e) =>
+                    setRecipes((prev) =>
+                      prev.map((x) => (x.id === r.id ? { ...x, name: e.target.value } : x)),
+                    )
+                  }
+                />
+                <Input
+                  label={`Oil per kg ${baseName} (L)`}
+                  type="number"
+                  step="0.001"
+                  value={oilLitresPerKgInput(r)}
+                  onChange={(e) => {
+                    const perKg = Number(e.target.value)
+                    setRecipes((prev) =>
+                      prev.map((x) =>
+                        x.id === r.id ? { ...x, expected_oil_litres: perKg * baseQty } : x,
+                      ),
+                    )
+                  }}
+                />
+                <Input
+                  label={`Waste per kg ${baseName} (kg)`}
+                  type="number"
+                  step="0.001"
+                  value={wasteKgPerKgInput(r)}
+                  onChange={(e) => {
+                    const perKg = Number(e.target.value)
+                    setRecipes((prev) =>
+                      prev.map((x) =>
+                        x.id === r.id ? { ...x, expected_waste_kg: perKg * baseQty } : x,
+                      ),
+                    )
+                  }}
+                />
+                <Button
+                  className="self-end"
+                  onClick={() =>
+                    void updateRecipe(r.id, {
+                      name: r.name,
+                      expected_oil_litres: r.expected_oil_litres,
+                      expected_waste_kg: r.expected_waste_kg,
+                    })
+                  }
+                >
+                  Save
+                </Button>
+              </Card>
+            )
+          })}
         </div>
       )}
+
+      {active === 'crushing' && crushingSettings ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">Rates apply to new crushing jobs only. Past jobs keep their saved rates.</p>
+          {(
+            [
+              ['SES-SEED', 'Sesame seed'],
+              ['GND-NUT', 'Groundnut'],
+              ['COC-NUT', 'Coconut'],
+            ] as const
+          ).map(([code, label]) => (
+            <Card key={code} className="grid gap-2 md:grid-cols-3">
+              <p className="font-medium md:col-span-1">{label} crushing ₹/kg</p>
+              <Input
+                label="Charge per kg"
+                type="number"
+                value={crushingSettings.charge_per_kg_by_raw_code[code] ?? 0}
+                onChange={(e) =>
+                  setCrushingSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          charge_per_kg_by_raw_code: {
+                            ...s.charge_per_kg_by_raw_code,
+                            [code]: Number(e.target.value),
+                          },
+                        }
+                      : s,
+                  )
+                }
+              />
+            </Card>
+          ))}
+          {(
+            [
+              ['SES-CAKE', 'Sesame cake'],
+              ['GND-CAKE', 'Groundnut cake'],
+              ['COC-CAKE', 'Coconut cake'],
+            ] as const
+          ).map(([code, label]) => (
+            <Card key={code} className="grid gap-2 md:grid-cols-3">
+              <p className="font-medium md:col-span-1">{label} buy ₹/kg</p>
+              <Input
+                label="Cake purchase rate"
+                type="number"
+                value={crushingSettings.cake_rate_by_product_code[code] ?? 0}
+                onChange={(e) =>
+                  setCrushingSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          cake_rate_by_product_code: {
+                            ...s.cake_rate_by_product_code,
+                            [code]: Number(e.target.value),
+                          },
+                        }
+                      : s,
+                  )
+                }
+              />
+            </Card>
+          ))}
+          <Button
+            onClick={() =>
+              crushingSettings &&
+              void updateCrushingSettings(crushingSettings).then(() => setMessage('Crushing settings saved'))
+            }
+          >
+            Save crushing settings
+          </Button>
+        </div>
+      ) : null}
 
       {active === 'categories' && (
         <Card className="text-sm text-slate-600">

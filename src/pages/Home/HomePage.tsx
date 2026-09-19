@@ -54,13 +54,30 @@ export default function HomePage() {
         </div>
       </section>
 
+      {d ? (
+        <section className="mt-5">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-brand-700">Today&apos;s crushing</h2>
+          <Link to="/crushing">
+          <Card className="grid gap-1 text-sm sm:grid-cols-2 transition active:scale-[0.99] hover:border-brand-500">
+            <p>{d.todayCrushing.customers} customers</p>
+            <p>{d.todayCrushing.kgCrushed} kg crushed</p>
+            <p>{d.todayCrushing.oilReturned} L oil returned</p>
+            <p className="font-semibold text-action-crushing">
+              {formatCurrency(d.todayCrushing.crushingIncome)} crushing income
+            </p>
+          </Card>
+          </Link>
+        </section>
+      ) : null}
+
       <section className="mt-6">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-brand-700">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <QuickActionButton to="/sell/new" label="SALES" kind="sales" />
-          <QuickActionButton to="/produce/new" label="PRODUCTION" kind="production" />
-          <QuickActionButton to="/buy/new" label="PURCHASE" kind="purchase" />
-          <QuickActionButton to="/expense/new" label="EXPENSES" kind="expense" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          <QuickActionButton to="/sell/new" label="SELL" kind="sales" />
+          <QuickActionButton to="/produce/new" label="PRODUCE" kind="production" />
+          <QuickActionButton to="/crushing" label="CRUSHING" kind="crushing" />
+          <QuickActionButton to="/buy" label="BUY" kind="purchase" />
+          <QuickActionButton to="/expense" label="EXPENSE" kind="expense" />
         </div>
       </section>
 
