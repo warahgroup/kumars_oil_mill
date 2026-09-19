@@ -46,8 +46,6 @@ export default function CrushingNewPage() {
 
   const [cakeHandling, setCakeHandling] = useState<'customer_takes' | 'sell_to_mill' | ''>('')
   const [payment, setPayment] = useState<AccountType>('cash')
-  const [error, setError] = useState<string | null>(null)
-
   useEffect(() => {
     void Promise.all([listRawMaterials(), listRecipes(), getCrushingSettings()]).then(([m, r, s]) => {
       setMaterials(m.filter((x) => CRUSHING_RAW_CODES.includes(x.code as typeof CRUSHING_RAW_CODES[number])))
@@ -117,7 +115,6 @@ export default function CrushingNewPage() {
   return (
     <PageShell title="New crushing" subtitle={`Step ${step} of ${TOTAL_STEPS}`} backTo="/crushing">
       <div className="mx-auto max-w-lg space-y-4">
-        {error ? <Alert variant="error">{error}</Alert> : null}
         {submit.error ? <Alert variant="error">{submit.error}</Alert> : null}
 
         {step === 1 && (
